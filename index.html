@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenith</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Mono', monospace;
+            background: #fafafa;
+            color: #1a1a1a;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: #666;
+            font-weight: 300;
+        }
+
+        .scanner-section {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 24px;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        #video {
+            width: 100%;
+            display: block;
+            border-radius: 20px;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .scan-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(255,255,255,0.6);
+            border-radius: 16px;
+            pointer-events: none;
+        }
+
+        .scan-overlay::before,
+        .scan-overlay::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #fff;
+            border-radius: 4px;
+        }
+
+        .scan-overlay::before {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .scan-overlay::after {
+            bottom: -2px;
+            right: -2px;
+            border-left: none;
+            border-top: none;
+        }
+
+        button {
+            background: #1a1a1a;
+            color: #ffffff;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 32px;
+            font-size: 13px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 0 auto;
+        }
+
+        button:hover {
+            background: #333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .button-group button {
+            margin: 0;
+        }
+
+        .cancel-btn {
+            background: #f0f0f0;
+            color: #1a1a1a;
+        }
+
+        .cancel-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .status {
+            text-align: center;
+            margin: 16px 0;
+            font-size: 12px;
+            min-height: 20px;
+        }
+
+        .success {
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .error {
+            color: #666;
+        }
+
+        .current-scan {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            display: none;
+        }
+
+        .current-scan.active {
+            display: block;
+        }
+
+        .item-info {
+            margin-bottom: 24px;
+        }
+
+        .item-name {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .location-info {
+            background: #f8f8f8;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .location-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .location-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .location-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .location-value {
+            font-weight: 400;
+            text-align: right;
+        }
+
+        .items-section {
+            margin-top: 24px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .items-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .item-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .item-card:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .item-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .item-card-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .location-count {
+            background: #1a1a1a;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .locations-list {
+            list-style: none;
+        }
+
+        .location-entry {
+            background: #f8f8f8;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .location-entry:last-child {
+            margin-bottom: 0;
+        }
+
+        .location-time {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+
+        .location-details {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .coordinates {
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        .accuracy-badge {
+            display: inline-block;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+        }
+
+        .no-items {
+            text-align: center;
+            color: #999;
+            padding: 48px;
+            font-style: italic;
+            font-size: 13px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        .clear-btn {
+            background: #f0f0f0;
+            color: #1a1a1a;
+            padding: 10px 24px;
+            font-size: 11px;
+            margin-top: 12px;
+            float: right;
+        }
+
+        .clear-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .delete-item-btn {
+            background: #f0f0f0;
+            color: #666;
+            padding: 6px 16px;
+            font-size: 10px;
+            margin-top: 16px;
+            border-radius: 10px;
+        }
+
+        .delete-item-btn:hover {
+            background: #e0e0e0;
+            color: #1a1a1a;
+        }
+
+        .input-section {
+            margin-bottom: 24px;
+        }
+
+        #itemInput {
+            width: 100%;
+            padding: 14px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            background: #f8f8f8;
+            color: #1a1a1a;
+            transition: all 0.3s ease;
+            margin-bottom: 12px;
+        }
+
+        #itemInput:focus {
+            outline: none;
+            border-color: #1a1a1a;
+            background: #fff;
+        }
+
+        #itemInput::placeholder {
+            color: #999;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 24px 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            background: #fff;
+            padding: 0 16px;
+            font-size: 11px;
+            color: #999;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Zenith</h1>
+            <div class="subtitle">Tag Location Tracking/Logging</div>
+        </header>
+
+        <div class="scanner-section">
+            <div class="input-section">
+                <input 
+                    type="text" 
+                    id="itemInput" 
+                    placeholder="Enter Item Code"
+                    spellcheck="false"
+                />
+                <button id="manualBtn">Track Item</button>
+            </div>
+            
+            <div class="divider">
+                <span>or</span>
+            </div>
+            
+            <div class="video-container" id="videoContainer" style="display:none;">
+                <video id="video" autoplay playsinline></video>
+                <div class="scan-overlay"></div>
+            </div>
+            <canvas id="canvas"></canvas>
+            <button id="scanBtn">Scan Tracking Code</button>
+            <div class="status" id="status"></div>
+        </div>
+
+        <div class="current-scan" id="currentScan">
+            <div class="item-info">
+                <div class="item-name" id="itemName"></div>
+            </div>
+            <div class="location-info">
+                <div class="location-row">
+                    <span class="location-label">Timestamp</span>
+                    <span class="location-value" id="timestamp"></span>
+                </div>
+                <div class="location-row">
+                    <span class="location-label">Timezone</span>
+                    <span class="location-value" id="timezone"></span>
+                </div>
+                <div class="location-row">
+                    <span class="location-label">Coordinates</span>
+                    <span class="location-value" id="coordinates"></span>
+                </div>
+                <div class="location-row">
+                    <span class="location-label">Accuracy</span>
+                    <span class="location-value" id="accuracy"></span>
+                </div>
+            </div>
+            <div class="button-group">
+                <button id="logLocationBtn">Log This Location</button>
+                <button class="cancel-btn" id="cancelBtn">Cancel</button>
+            </div>
+        </div>
+
+        <div class="items-section">
+            <h2>Tracked Items</h2>
+            <div class="items-grid" id="itemsGrid">
+                <div class="no-items">No items tracked yet. Scan a tracking code to begin.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scanBtn = document.getElementById('scanBtn');
+        const manualBtn = document.getElementById('manualBtn');
+        const itemInput = document.getElementById('itemInput');
+        const status = document.getElementById('status');
+        const videoContainer = document.getElementById('videoContainer');
+        const currentScan = document.getElementById('currentScan');
+        const logLocationBtn = document.getElementById('logLocationBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const itemsGrid = document.getElementById('itemsGrid');
+
+        let scanning = false;
+        let stream = null;
+        let currentItem = null;
+        let itemsData = {};
+        let db = null;
+
+        // Initialize IndexedDB
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('TagLocationDB', 1);
+                
+                request.onerror = () => {
+                    console.error('IndexedDB failed, using localStorage only');
+                    resolve(false);
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(true);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('items')) {
+                        database.createObjectStore('items', { keyPath: 'name' });
+                    }
+                };
+            });
+        }
+
+        // Load data from IndexedDB with localStorage fallback
+        async function loadData() {
+            try {
+                if (db) {
+                    const transaction = db.transaction(['items'], 'readonly');
+                    const store = transaction.objectStore('items');
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => {
+                        const items = request.result;
+                        itemsData = {};
+                        items.forEach(item => {
+                            itemsData[item.name] = item;
+                        });
+                        renderItems();
+                        // Backup to localStorage
+                        localStorage.setItem('zenith_items_backup', JSON.stringify(itemsData));
+                    };
+                    
+                    request.onerror = () => {
+                        loadFromLocalStorage();
+                    };
+                } else {
+                    loadFromLocalStorage();
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                loadFromLocalStorage();
+            }
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('zenith_items_backup');
+            if (saved) {
+                itemsData = JSON.parse(saved);
+                renderItems();
+            }
+        }
+
+        // Save data to both IndexedDB and localStorage
+        async function saveData() {
+            // Save to localStorage backup immediately
+            localStorage.setItem('zenith_items_backup', JSON.stringify(itemsData));
+            
+            // Save to IndexedDB
+            if (db) {
+                try {
+                    const transaction = db.transaction(['items'], 'readwrite');
+                    const store = transaction.objectStore('items');
+                    
+                    for (const item of Object.values(itemsData)) {
+                        store.put(item);
+                    }
+                } catch (error) {
+                    console.error('IndexedDB save failed, localStorage backup available');
+                }
+            }
+        }
+
+        manualBtn.addEventListener('click', () => {
+            const input = itemInput.value.trim();
+            if (!input) {
+                status.textContent = 'Please enter an item code';
+                status.className = 'status error';
+                return;
+            }
+            
+            handleQRCode(input);
+            itemInput.value = '';
+        });
+
+        itemInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                manualBtn.click();
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            currentScan.classList.remove('active');
+            currentItem = null;
+            status.textContent = 'Cancelled';
+            status.className = 'status';
+            setTimeout(() => {
+                status.textContent = '';
+            }, 2000);
+        });
+
+        scanBtn.addEventListener('click', async () => {
+            if (!scanning) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
+                    video.srcObject = stream;
+                    videoContainer.style.display = 'block';
+                    scanning = true;
+                    scanBtn.textContent = 'Stop Scanning';
+                    status.textContent = '';
+                    requestAnimationFrame(tick);
+                } catch (err) {
+                    status.textContent = 'Camera access denied';
+                    status.className = 'status error';
+                }
+            } else {
+                stopScanning();
+            }
+        });
+
+        function stopScanning() {
+            scanning = false;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            videoContainer.style.display = 'none';
+            scanBtn.textContent = 'Scan Tracking Code';
+            status.textContent = '';
+        }
+
+        function tick() {
+            if (!scanning) return;
+
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    handleQRCode(code.data);
+                    return;
+                }
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function handleQRCode(data) {
+            if (data.includes(':')) {
+                const parts = data.split(':');
+                const itemName = parts.slice(1).join(':'); // Handle colons in item names
+                currentItem = itemName;
+                
+                stopScanning();
+                status.textContent = 'Item code detected successfully';
+                status.className = 'status success';
+
+                getLocation(itemName);
+            } else {
+                status.textContent = 'Invalid format. Use: name:Item';
+                status.className = 'status error';
+            }
+        }
+
+        function getLocation(itemName) {
+            if (navigator.geolocation) {
+                status.textContent = 'Getting precise location...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        displayCurrentLocation(itemName, position);
+                    },
+                    (error) => {
+                        status.textContent = 'Location access denied';
+                        status.className = 'status error';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                status.textContent = 'Geolocation not supported';
+                status.className = 'status error';
+            }
+        }
+
+        function displayCurrentLocation(itemName, position) {
+            const now = new Date();
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            
+            document.getElementById('itemName').textContent = itemName;
+            document.getElementById('timestamp').textContent = now.toLocaleString();
+            document.getElementById('timezone').textContent = timezone;
+            document.getElementById('coordinates').textContent = 
+                `${position.coords.latitude.toFixed(6)}°, ${position.coords.longitude.toFixed(6)}°`;
+            document.getElementById('accuracy').textContent = 
+                `±${position.coords.accuracy.toFixed(2)}m`;
+
+            currentScan.classList.add('active');
+        }
+
+        logLocationBtn.addEventListener('click', () => {
+            if (!currentItem) return;
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const now = new Date();
+                    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    
+                    const logEntry = {
+                        timestamp: now.toISOString(),
+                        displayTime: now.toLocaleString(),
+                        timezone: timezone,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                        altitude: position.coords.altitude,
+                        altitudeAccuracy: position.coords.altitudeAccuracy
+                    };
+
+                    if (!itemsData[currentItem]) {
+                        itemsData[currentItem] = {
+                            name: currentItem,
+                            locations: []
+                        };
+                    }
+                    
+                    itemsData[currentItem].locations.unshift(logEntry);
+                    saveData();
+                    renderItems();
+                    
+                    currentScan.classList.remove('active');
+                    currentItem = null;
+                    
+                    status.textContent = 'Location logged successfully';
+                    status.className = 'status success';
+                },
+                (error) => {
+                    status.textContent = 'Failed to log location';
+                    status.className = 'status error';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+
+        function renderItems() {
+            itemsGrid.innerHTML = '';
+            
+            const items = Object.values(itemsData);
+            
+            if (items.length === 0) {
+                itemsGrid.innerHTML = '<div class="no-items">No items tracked yet. Scan a QR code to begin.</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                
+                const locationsHTML = item.locations.map(log => {
+                    const accuracyMeters = log.accuracy.toFixed(2);
+                    const accuracyCm = (log.accuracy * 100).toFixed(0);
+                    
+                    return `
+                        <li class="location-entry">
+                            <div class="location-time">${log.displayTime}</div>
+                            <div class="location-details">
+                                <div>Timezone: ${log.timezone}</div>
+                                <div class="coordinates">
+                                    Lat: ${log.latitude.toFixed(8)}° | Lon: ${log.longitude.toFixed(8)}°
+                                </div>
+                                ${log.altitude !== null ? `<div>Altitude: ${log.altitude.toFixed(2)}m</div>` : ''}
+                                <div class="accuracy-badge">±${accuracyMeters}m (±${accuracyCm}cm)</div>
+                            </div>
+                        </li>
+                    `;
+                }).join('');
+                
+                card.innerHTML = `
+                    <div class="item-card-header">
+                        <div class="item-card-name">${item.name}</div>
+                        <div class="location-count">${item.locations.length} location${item.locations.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    <ul class="locations-list">
+                        ${locationsHTML}
+                    </ul>
+                    <button class="delete-item-btn" onclick="deleteItem('${item.name}')">Delete Item</button>
+                `;
+                
+                itemsGrid.appendChild(card);
+            });
+        }
+
+        function deleteItem(itemName) {
+            if (confirm(`Delete all location data for "${itemName}"?`)) {
+                delete itemsData[itemName];
+                
+                // Delete from IndexedDB
+                if (db) {
+                    const transaction = db.transaction(['items'], 'readwrite');
+                    const store = transaction.objectStore('items');
+                    store.delete(itemName);
+                }
+                
+                saveData();
+                renderItems();
+                status.textContent = 'Item deleted';
+                status.className = 'status success';
+            }
+        }
+
+        window.deleteItem = deleteItem;
+        
+        // Initialize app
+        (async () => {
+            await initDB();
+            await loadData();
+        })();
+    </script>
+</body>
+</html>
